@@ -17,28 +17,44 @@ try:
     with open('recents.pkl', 'rb') as f:
         recents_rows = pickle.load(f)
 except FileNotFoundError:
-    recents_rows = [[]]
+    recents_rows = []
+
 
 layout = [[sg.Titlebar("Byte of 87")], [sg.Text("Welcome to Halal Scanner.")],
           [sg.Text("Recent Searches"), sg.Button("Clear")],
           [sg.Table(values=recents_rows, headings=recents_headings, key="-RECENTS-",
-                    auto_size_columns=False, col_widths=[30, 15, 50], justification="center")],
+                    auto_size_columns=False, col_widths=[25, 15, 85], row_height=30, justification="center")],
           [sg.Button("Scan a Barcode")], [sg.Text("Enter a UPC to search:")],
           [sg.InputText(key="-QUERY-"), sg.Button("Search")]]
+
+
+def update_recents(product_name, upc, classification):
+    upcs = [row[1] for row in recents_rows]
+    # add product to top, otherwise existing row to top
+    if upc in upcs:
+        recents_rows.insert(0, recents_rows.pop(upcs.index(upc)))
+    else:
+        recents_rows.insert(0, [product_name, upc, classification])
+    window['-RECENTS-'].update(values=recents_rows)
 
 
 def show_result(upc):
     print('You entered', upc)
     info = query.get_product_info(upc)
     if info:
-        product_name = info['product']['product_name']
-        ingredients = info['product']['ingredients_text']
+        try:
+            product_name = info['product']['product_name']
+            ingredients = info['product']['ingredients_text']
+        except KeyError:
+            sg.popup("Error fetching product information. Product may not exist in database.")
+            return
+
         print(f"Product Name: {product_name}")
         print(f"Ingredients: {ingredients}")
 
         halal_result = query.is_halal_product(ingredients)
-
         vegan, vegetarian = query.is_vegan(info), query.is_vegetarian(info)
+        allergens = query.has_allergens(info)
 
         # Classification of whether it is halal, vegan, and vegetarian
         separator = "\n\n\t"
@@ -67,13 +83,16 @@ def show_result(upc):
             classification += f"⚠️ Maybe Vegetarian ({vegetarian[1]})"
         else:
             classification += f"❓ Vegetarian Unknown"
+        classification += separator
+
+        if allergens:
+            classification += f"❌ Contains Allergens ({allergens})"
+        else:
+            classification += "✅ No Allergens"
 
         sg.popup(f"Product Name: {product_name}\n\nIngredients: {ingredients.lower()}\n\nClassification:\n\n{classification}\n")
 
-        # Add the search to the recent searches table
-        recents_rows.append([product_name, upc, classification.replace("\n", ", ").replace("\t", "")])
-
-        window['-RECENTS-'].update(values=recents_rows)
+        update_recents(product_name, upc, classification.replace(separator, ", "))
     else:
         sg.popup("Error fetching product information.")
 
@@ -85,6 +104,7 @@ while True:
     event, values = window.read()
     if event == sg.WIN_CLOSED:  # if user closes window or clicks cancel
         break
+
     if event == "Scan a Barcode":
         print("Scanning a barcode...")
         query_upc = scan.capture_image()
@@ -95,13 +115,15 @@ while True:
                 print(f"User confirmed UPC code: {confirmation}")
                 show_result(query_upc)
             else:
-                print("User canceled or closed the confirmation popup")
-                continue
+                print("User cancelled or closed the confirmation popup")
+                # continue
         elif query_upc == 'Cancelled':
-            print("User canceled or closed the barcode scanner")
-            continue
+            print("User cancelled or closed the barcode scanner")
+            # continue
         else:
             sg.popup("Error fetching product information.")
+        window.Element('-QUERY-').Update(disabled=False)
+
     if event == "Search":
         query_upc = values["-QUERY-"]
         try:
@@ -109,8 +131,10 @@ while True:
         except ValueError:
             sg.popup("Please enter a valid UPC.")
         show_result(query_upc)
+        window.Element('-QUERY-').Update(disabled=False)
+
     if event == "Clear":
-        recents_rows = [[]]
+        recents_rows = []
         window['-RECENTS-'].update(values=recents_rows)
 
 

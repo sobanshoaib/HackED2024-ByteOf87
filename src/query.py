@@ -83,8 +83,21 @@ def is_vegetarian(product_data):
     return 1, None
 
 
+def has_allergens(product_data):
+    tags = ""
+    allergens = product_data['product']['allergens_tags']
+    if len(allergens) > 0:
+        for i in range(len(allergens)):
+            allergens[i] = allergens[i].removeprefix('en:')
+            if i == len(allergens) - 1:
+                tags = tags + allergens[i]
+            else:
+                tags = tags + allergens[i] + ", "
+        return tags
+
+
 def get_product_info(barcode):
-    api_url = f"https://world.openfoodfacts.org/api/v2/product/{barcode}?fields=product_name,ingredients_text,ingredients"
+    api_url = f"https://world.openfoodfacts.org/api/v2/product/{barcode}?fields=product_name,ingredients_text,ingredients,allergens_tags"
 
     try:
         response = requests.get(api_url)
