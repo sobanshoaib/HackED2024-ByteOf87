@@ -50,17 +50,17 @@ def is_halal_product(ingredients):
     for ingredient in ingredients_list:
         # Check for explicit non-halal ingredients
         if ingredient.lower() in non_halal_ingredients:
-            return False
+            return False, ingredient
 
         # Check for ingredients ending with -ol (excluding "alcohol")
         if ingredient.lower().endswith("ol") and "alcohol" not in ingredient.lower():
-            return False
+            return False, ingredient
 
-    return True
+    return True, None
 
 
 def get_product_info(barcode):
-    api_url = f"https://world.openfoodfacts.org/api/v2/product/{barcode}?fields=product_name,ingredients_text"
+    api_url = f"https://world.openfoodfacts.org/api/v2/product/{barcode}?fields=product_name,ingredients_text,allergens_from_ingredients"
 
     try:
         response = requests.get(api_url)
