@@ -15,9 +15,10 @@ def capture_image():
         result = barcode_reader(babyAbdul)
         if len(result) > 0:
             print(result)
-            capture.release()
-            cv2.destroyAllWindows()
-            return result
+            break
         cv2.imshow("Barcode Scanner", babyAbdul)
         if cv2.waitKey(1) == ord('q'):
             break
+    capture.release()
+    cv2.destroyAllWindows()
+    return result
