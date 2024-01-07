@@ -11,7 +11,7 @@ sg.theme("DarkBlue14")
 font = ("Helvetica", 16)
 sg.set_options(font=font)
 
-recents_headings = ["Product Name", "UPC #", "Classification"]
+recents_headings = ["Product Name", "UPC #", "Halal", "Vegan", "Vegetarian", "Allergens"]
 
 try:
     with open('recents.pkl', 'rb') as f:
@@ -19,22 +19,24 @@ try:
 except FileNotFoundError:
     recents_rows = []
 
+class_col_width = 20
 
 layout = [[sg.Titlebar("Byte of 87")], [sg.Text("Welcome to Halal Scanner.")],
           [sg.Text("Recent Searches"), sg.Button("Clear")],
           [sg.Table(values=recents_rows, headings=recents_headings, key="-RECENTS-",
-                    auto_size_columns=False, col_widths=[25, 15, 85], row_height=30, justification="center")],
+                    auto_size_columns=False, col_widths=[25, 15, class_col_width, class_col_width, class_col_width, class_col_width], row_height=30, justification="center")],
           [sg.Button("Scan a Barcode")], [sg.Text("Enter a UPC to search:")],
           [sg.InputText(key="-QUERY-"), sg.Button("Search")]]
 
 
-def update_recents(product_name, upc, classification):
+def update_recents(product_name, upc, classification, halal_col, vegan_col, vegetarian_col, allergens_col):
     upcs = [row[1] for row in recents_rows]
     # add product to top, otherwise existing row to top
     if upc in upcs:
         recents_rows.insert(0, recents_rows.pop(upcs.index(upc)))
     else:
-        recents_rows.insert(0, [product_name, upc, classification])
+        # recents_rows.insert(0, [product_name, upc, classification])
+        recents_rows.insert(0, [product_name, upc, halal_col, vegan_col, vegetarian_col, allergens_col])
     window['-RECENTS-'].update(values=recents_rows)
 
 
@@ -56,43 +58,64 @@ def show_result(upc):
         vegan, vegetarian = query.is_vegan(info), query.is_vegetarian(info)
         allergens = query.has_allergens(info)
 
+        halal_col = ""
+        vegan_col = ""
+        vegetarian_col = ""
+        allergens_col = ""
+
         # Classification of whether it is halal, vegan, and vegetarian
         separator = "\n\n\t"
         classification = "\t"
         if halal_result[0]:
             classification += "✅ Halal"
+            halal_col = "✅"
         else:
             classification += f"❌ Not Halal ({halal_result[1]})"
+            halal_col = f"❌ ({halal_result[1]})"
         classification += separator
 
         if vegan[0] == 0:
             classification += f"❌ Not Vegan ({vegan[1]})"
+            vegan_col = f"❌ ({vegan[1]})"
         elif vegan[0] == 1:
             classification += "✅ Vegan"
+            vegan_col = "✅"
         elif vegan[0] == 2:
             classification += f"⚠️ Maybe Vegan ({vegan[1]})"
+            vegan_col = f"⚠️ ({vegan[1]})"
         else:
             classification += f"❓ Vegan Unknown"
+            vegan_col = "❓"
         classification += separator
 
         if vegetarian[0] == 0:
             classification += f"❌ Not Vegetarian ({vegetarian[1]})"
+            vegetarian_col = f"❌ ({vegetarian[1]})"
         elif vegetarian[0] == 1:
             classification += "✅ Vegetarian"
+            vegetarian_col = "✅"
         elif vegetarian[0] == 2:
             classification += f"⚠️ Maybe Vegetarian ({vegetarian[1]})"
+            vegetarian_col = f"⚠️ ({vegetarian[1]})"
         else:
             classification += f"❓ Vegetarian Unknown"
+            vegetarian_col = "❓"
         classification += separator
 
         if allergens:
             classification += f"❌ Contains Allergens ({allergens})"
+            allergens_col = f"❌ ({allergens})"
         else:
             classification += "✅ No Allergens"
+            allergens_col = "✅"
+
+        if not product_name:
+            product_name = "Unknown"
 
         sg.popup(f"Product Name: {product_name}\n\nIngredients: {ingredients.lower()}\n\nClassification:\n\n{classification}\n")
 
-        update_recents(product_name, upc, classification.replace(separator, ", "))
+        # update_recents(product_name, upc, classification.replace(separator, ", "))
+        update_recents(product_name, upc, classification, halal_col, vegan_col, vegetarian_col, allergens_col)
     else:
         sg.popup("Error fetching product information.")
 
