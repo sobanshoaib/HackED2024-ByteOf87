@@ -18,6 +18,7 @@ def capture_image():
             break
         cv2.imshow("Barcode Scanner", babyAbdul)
         if cv2.waitKey(1) == ord('q'):
+            result = 'Cancelled'
             break
     capture.release()
     cv2.destroyAllWindows()
